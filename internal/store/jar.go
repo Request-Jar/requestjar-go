@@ -35,6 +35,9 @@ func (s *jarStore) Create() (string, error) {
 }
 
 func (s *jarStore) Get(id string) (*models.Jar, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	jar, exists := s.jars[id]
 	if !exists {
 		return nil, errors.New("jar not found")
@@ -44,6 +47,9 @@ func (s *jarStore) Get(id string) (*models.Jar, error) {
 }
 
 func (s *jarStore) List() ([]*models.Jar, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	jars := make([]*models.Jar, len(s.jars))
 
 	for _, j := range s.jars {
