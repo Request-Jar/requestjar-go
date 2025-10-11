@@ -13,6 +13,7 @@ type JarStore interface {
 	Create() (string, error)
 	Get(id string) (*models.Jar, error)
 	List() ([]*models.Jar, error)
+	Delete(id string) error
 }
 
 type jarStore struct {
@@ -57,4 +58,12 @@ func (s *jarStore) List() ([]*models.Jar, error) {
 	}
 
 	return jars, nil
+}
+
+func (s *jarStore) Delete(jarID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	delete(s.jars, jarID)
+	return nil
 }

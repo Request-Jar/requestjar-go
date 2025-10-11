@@ -5,7 +5,6 @@ import "time"
 type Jar struct {
 	ID        string
 	CreatedAt time.Time
-	Requests  []Request
 }
 
 type Request struct {
