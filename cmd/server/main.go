@@ -22,8 +22,7 @@ func main() {
 	mux.HandleFunc("GET /jars", r.GetAllJarMetadata)
 	mux.HandleFunc("POST /jars", r.CreateJar)
 	mux.HandleFunc("DELETE /jars/{jarID}", r.DeleteJar)
-	mux.HandleFunc("GET /jars/{jarID}/requests", r.GetRequests)
-	mux.HandleFunc("GET /jars/{jarID}", r.GetJarWithRequests) // TODO might be redundant
+	mux.HandleFunc("GET /jars/{jarID}", r.GetJarWithRequests)
 	mux.HandleFunc("DELETE /jars/{jarID}/requests/{reqID}", r.DeleteRequest)
 	mux.HandleFunc("GET /jars/{jarID}/events", r.HandleSSEConnection)
 	mux.HandleFunc("/r/{jarID}", r.CaptureRequest)

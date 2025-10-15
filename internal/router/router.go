@@ -64,11 +64,15 @@ func (router *Router) GetAllJarMetadata(w http.ResponseWriter, r *http.Request) 
 	util.WriteJSON(w, http.StatusOK, jars)
 }
 
-func (router *Router) GetRequests(w http.ResponseWriter, r *http.Request) {}
+func (router *Router) DeleteRequest(w http.ResponseWriter, r *http.Request) {
+	// jarID := r.PathValue("jarID")
+	// reqID := r.PathValue("reqID")
+	// TODO
+}
 
-func (router *Router) DeleteRequest(w http.ResponseWriter, r *http.Request) {}
-
-func (router *Router) GetJarWithRequests(w http.ResponseWriter, r *http.Request) {}
+func (router *Router) GetJarWithRequests(w http.ResponseWriter, r *http.Request) {
+	// TODO
+}
 
 func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request) {
 	jarID := r.PathValue("jarID")

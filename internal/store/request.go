@@ -8,7 +8,8 @@ import (
 )
 
 type RequestStore interface {
-	Create(jarID string, req *models.Request) error
+	CreateRequest(jarID string, req *models.Request) error
+	CreateJarKey(jarID string) error
 	List(jarID string) ([]*models.Request, error)
 }
 
@@ -21,17 +22,27 @@ func NewInMemoryRequestStore() RequestStore {
 	return &requestStore{requests: make(map[string][]*models.Request)}
 }
 
-func (s *requestStore) Create(jarID string, req *models.Request) error {
+func (s *requestStore) CreateRequest(jarID string, req *models.Request) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	requests, jarExists := s.requests[jarID]
 
 	if !jarExists {
-		s.requests[jarID] = []*models.Request{req}
+		return errors.New("jar not found")
 	} else {
 		requests = append(requests, req)
 		s.requests[jarID] = requests
+	}
+
+	return nil
+}
+
+func (s *requestStore) CreateJarKey(jarID string) error {
+	_, jarExists := s.requests[jarID]
+
+	if !jarExists {
+		s.requests[jarID] = []*models.Request{}
 	}
 
 	return nil
