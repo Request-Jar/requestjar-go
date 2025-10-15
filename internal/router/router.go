@@ -42,15 +42,9 @@ func (router *Router) CreateJar(w http.ResponseWriter, r *http.Request) {
 }
 
 func (router *Router) DeleteJar(w http.ResponseWriter, r *http.Request) {
-	var reqBody DeleteJarRequest
+	jarID := r.PathValue("jarId")
 
-	err := json.NewDecoder(r.Body).Decode(&reqBody)
-	if err != nil {
-		http.Error(w, "could not parse request", http.StatusBadRequest)
-		return
-	}
-
-	err = router.svc.DeleteJar(reqBody.ID)
+	err := router.svc.DeleteJar(jarID)
 	if err != nil {
 		http.Error(w, "failed to delete jar", http.StatusInternalServerError)
 		return
@@ -77,7 +71,7 @@ func (router *Router) DeleteRequest(w http.ResponseWriter, r *http.Request) {}
 func (router *Router) GetJarWithRequests(w http.ResponseWriter, r *http.Request) {}
 
 func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request) {
-	jarID := r.PathValue("jarId")
+	jarID := r.PathValue("jarID")
 
 	// Check that jar exists
 	_, err := router.svc.GetJarMetadata(jarID)
@@ -150,6 +144,6 @@ func (router *Router) CaptureRequest(w http.ResponseWriter, r *http.Request) {
 	err = router.svc.NewRequest(jarID, req)
 
 	if err != nil {
-
+		// TODO
 	}
 }

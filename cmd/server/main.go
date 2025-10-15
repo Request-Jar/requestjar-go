@@ -19,9 +19,15 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	// TODO add handlers
 	mux.HandleFunc("GET /jars", r.GetAllJarMetadata)
 	mux.HandleFunc("POST /jars", r.CreateJar)
+	mux.HandleFunc("DELETE /jars/{jarID}", r.DeleteJar)
+	mux.HandleFunc("GET /jars/{jarID}/requests", r.GetRequests)
+	mux.HandleFunc("GET /jars/{jarID}", r.GetJarWithRequests) // TODO might be redundant
+	mux.HandleFunc("DELETE /jars/{jarID}/requests/{reqID}", r.DeleteRequest)
+	mux.HandleFunc("GET /jars/{jarID}/events", r.HandleSSEConnection)
+	mux.HandleFunc("/r/{jarID}", r.CaptureRequest)
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "hi from Request Jar")
 	})
@@ -29,7 +35,7 @@ func main() {
 	// Configure CORS
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"}, // TODO
-		AllowedMethods:   []string{"*"},
+		AllowedMethods:   []string{"*"}, // TODO
 		AllowedHeaders:   []string{"*"},
 		AllowCredentials: true,
 	})
