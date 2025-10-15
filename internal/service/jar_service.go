@@ -22,8 +22,8 @@ func NewJarService(jarStore store.JarStore, requestStore store.RequestStore) *Ja
 	}
 }
 
-func (s *JarService) CreateJar() (string, error) {
-	jarID, err := s.jarStore.Create()
+func (s *JarService) CreateJar(name string) (string, error) {
+	jarID, err := s.jarStore.Create(name)
 
 	if err != nil {
 		return "", errors.New("failed to create jar")
@@ -85,9 +85,18 @@ func (s *JarService) RemoveConnection(jarID string, eventChan chan *models.Reque
 	return nil
 }
 
-func (s *JarService) NewRequest(jarID string, request *models.Request) {
-	s.requestStore.Create(jarID, request)
+func (s *JarService) NewRequest(jarID string, request *models.Request) error {
+	err := s.requestStore.Create(jarID, request)
+
+	// TODO check that jar exists first (decide where to do this)
+
+	if err != nil {
+
+	}
+
 	s.notifyClients(jarID, request)
+
+	return nil
 }
 
 func (s *JarService) notifyClients(jarID string, request *models.Request) {

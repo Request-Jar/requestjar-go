@@ -17,7 +17,7 @@ type requestStore struct {
 	mu       sync.RWMutex
 }
 
-func NewInMemoryRequestStore(jarID string) RequestStore {
+func NewInMemoryRequestStore() RequestStore {
 	return &requestStore{requests: make(map[string][]*models.Request)}
 }
 

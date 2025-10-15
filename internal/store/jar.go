@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"log"
 	"sync"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 )
 
 type JarStore interface {
-	Create() (string, error)
+	Create(name string) (string, error)
 	Get(id string) (*models.Jar, error)
 	List() ([]*models.Jar, error)
 	Delete(id string) error
@@ -25,12 +26,13 @@ func NewInMemoryJarStore() JarStore {
 	return &jarStore{jars: make(map[string]*models.Jar)}
 }
 
-func (s *jarStore) Create() (string, error) {
+func (s *jarStore) Create(name string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	id := util.GenerateID()
-	s.jars[id] = &models.Jar{ID: id, CreatedAt: time.Now()}
+	s.jars[id] = &models.Jar{ID: id, Name: name, CreatedAt: time.Now()}
+	log.Println(s.jars[id])
 
 	return id, nil
 }
@@ -51,7 +53,7 @@ func (s *jarStore) List() ([]*models.Jar, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	jars := make([]*models.Jar, len(s.jars))
+	jars := []*models.Jar{}
 
 	for _, j := range s.jars {
 		jars = append(jars, j)

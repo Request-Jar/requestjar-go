@@ -4,6 +4,7 @@ import "time"
 
 type Jar struct {
 	ID        string
+	Name      string
 	CreatedAt time.Time
 }
 
