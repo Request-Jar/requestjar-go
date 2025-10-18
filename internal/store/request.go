@@ -2,6 +2,8 @@ package store
 
 import (
 	"errors"
+	"log"
+	"slices"
 	"sync"
 
 	"github.com/bpietroniro/requestjar-go/internal/models"
@@ -11,6 +13,7 @@ type RequestStore interface {
 	CreateRequest(jarID string, req *models.Request) error
 	CreateJarKey(jarID string) error
 	List(jarID string) ([]*models.Request, error)
+	Delete(jarID string, reqID string) error
 }
 
 type requestStore struct {
@@ -29,6 +32,7 @@ func (s *requestStore) CreateRequest(jarID string, req *models.Request) error {
 	requests, jarExists := s.requests[jarID]
 
 	if !jarExists {
+		log.Println("jar not found")
 		return errors.New("jar not found")
 	} else {
 		requests = append(requests, req)
@@ -39,10 +43,17 @@ func (s *requestStore) CreateRequest(jarID string, req *models.Request) error {
 }
 
 func (s *requestStore) CreateJarKey(jarID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	log.Printf("Creating jar key for jarID: %s", jarID)
 	_, jarExists := s.requests[jarID]
 
 	if !jarExists {
-		s.requests[jarID] = []*models.Request{}
+		log.Printf("Jar %s didn't exist, creating new request slice", jarID)
+		s.requests[jarID] = make([]*models.Request, 0, 5)
+	} else {
+		log.Printf("Jar %s already existed in request store", jarID)
 	}
 
 	return nil
@@ -59,4 +70,28 @@ func (s *requestStore) List(jarID string) ([]*models.Request, error) {
 	}
 
 	return requests, nil
+}
+
+func (s *requestStore) Delete(jarID string, reqID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	requests, jarExists := s.requests[jarID]
+
+	if !jarExists {
+		return errors.New("jar not found")
+	}
+
+	filteredRequests := slices.Collect(func(yield func(*models.Request) bool) {
+		for _, n := range requests {
+			if n.ID != reqID {
+				if !yield(n) {
+					return
+				}
+			}
+		}
+	})
+
+	s.requests[jarID] = filteredRequests
+	return nil
 }

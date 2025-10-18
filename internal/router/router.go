@@ -2,7 +2,9 @@ package router
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -65,13 +67,36 @@ func (router *Router) GetAllJarMetadata(w http.ResponseWriter, r *http.Request) 
 }
 
 func (router *Router) DeleteRequest(w http.ResponseWriter, r *http.Request) {
-	// jarID := r.PathValue("jarID")
-	// reqID := r.PathValue("reqID")
-	// TODO
+	jarID := r.PathValue("jarID")
+	reqID := r.PathValue("reqID")
+
+	err := router.svc.DeleteRequest(jarID, reqID)
+
+	if err != nil {
+		// TODO appropriate status codes
+		http.Error(w, "failed to delete request", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (router *Router) GetJarWithRequests(w http.ResponseWriter, r *http.Request) {
-	// TODO
+	jarID := r.PathValue("jarID")
+
+	jar, requests, err := router.svc.GetJarWithRequests(jarID)
+
+	// TODO appropriate status codes
+	if err != nil {
+		http.Error(w, "failed to retrieve jar", http.StatusBadRequest)
+	}
+
+	resp := GetJarWithRequestsResponse{
+		Jar:      *jar,
+		Requests: requests,
+	}
+
+	util.WriteJSON(w, http.StatusCreated, resp)
 }
 
 func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request) {
@@ -89,6 +114,12 @@ func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+		return
+	}
+
 	// Create a channel for this requesting client
 	eventChan := make(chan *models.Request)
 
@@ -101,6 +132,9 @@ func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request
 		close(eventChan)
 	}()
 
+	fmt.Fprintf(w, "data: connected\n\n")
+	flusher.Flush()
+
 	// Client has disconnected
 	done := r.Context().Done()
 
@@ -108,15 +142,24 @@ func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request
 		select {
 		case request := <-eventChan:
 			// Forward incoming request event to the client
-			json.NewEncoder(w).Encode(request)
+			log.Println("request coming through channel")
+			requestJson, err := json.Marshal(request)
+			if err != nil {
+				log.Printf("Error marshaling request: %v", err)
+				continue
+			}
+
+			fmt.Fprintf(w, "data: %s\n\n", requestJson)
+			flusher.Flush()
 		case <-done:
+			log.Println("Client disconnected")
 			return
 		}
 	}
 }
 
 func (router *Router) CaptureRequest(w http.ResponseWriter, r *http.Request) {
-	jarID := r.PathValue("jarId")
+	jarID := r.PathValue("jarID")
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -148,6 +191,7 @@ func (router *Router) CaptureRequest(w http.ResponseWriter, r *http.Request) {
 	err = router.svc.NewRequest(jarID, req)
 
 	if err != nil {
-		// TODO
+		// TODO appropriate status codes
+		http.Error(w, "failed to create new request", http.StatusInternalServerError)
 	}
 }

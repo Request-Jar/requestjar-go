@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/bpietroniro/requestjar-go/internal/models"
@@ -63,6 +64,7 @@ func (s *JarService) GetJarWithRequests(jarID string) (*models.Jar, []*models.Re
 }
 
 func (s *JarService) AddConnection(jarID string, eventChan chan *models.Request) error {
+	log.Println("adding connection")
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -77,6 +79,7 @@ func (s *JarService) AddConnection(jarID string, eventChan chan *models.Request)
 }
 
 func (s *JarService) RemoveConnection(jarID string, eventChan chan *models.Request) error {
+	log.Println("removing connection")
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -92,10 +95,8 @@ func (s *JarService) RemoveConnection(jarID string, eventChan chan *models.Reque
 func (s *JarService) NewRequest(jarID string, request *models.Request) error {
 	err := s.requestStore.CreateRequest(jarID, request)
 
-	// TODO check that jar exists first (decide where to do this)
-
 	if err != nil {
-
+		return err
 	}
 
 	s.notifyClients(jarID, request)
@@ -103,7 +104,12 @@ func (s *JarService) NewRequest(jarID string, request *models.Request) error {
 	return nil
 }
 
+func (s *JarService) DeleteRequest(jarID string, reqID string) error {
+	return s.requestStore.Delete(jarID, reqID)
+}
+
 func (s *JarService) notifyClients(jarID string, request *models.Request) {
+	log.Println("notifying clients")
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
