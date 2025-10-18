@@ -30,21 +30,21 @@ func (router *Router) CreateJar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newJarId, err := router.svc.CreateJar(reqBody.Name)
+	newJarID, err := router.svc.CreateJar(reqBody.Name)
 	if err != nil {
 		http.Error(w, "failed to create jar", http.StatusInternalServerError)
 		return
 	}
 
 	resp := map[string]string{
-		"id": newJarId,
+		"id": newJarID,
 	}
 
 	util.WriteJSON(w, http.StatusCreated, resp)
 }
 
 func (router *Router) DeleteJar(w http.ResponseWriter, r *http.Request) {
-	jarID := r.PathValue("jarId")
+	jarID := r.PathValue("jarID")
 
 	err := router.svc.DeleteJar(jarID)
 	if err != nil {
@@ -140,9 +140,14 @@ func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request
 
 	for {
 		select {
-		case request := <-eventChan:
+		case request, ok := <-eventChan:
+			// Channel was closed and likely deleted
+			if !ok {
+				log.Println("Channel closed, ending connection")
+				return
+			}
+
 			// Forward incoming request event to the client
-			log.Println("request coming through channel")
 			requestJson, err := json.Marshal(request)
 			if err != nil {
 				log.Printf("Error marshaling request: %v", err)

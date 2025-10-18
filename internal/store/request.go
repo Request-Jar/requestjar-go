@@ -13,7 +13,8 @@ type RequestStore interface {
 	CreateRequest(jarID string, req *models.Request) error
 	CreateJarKey(jarID string) error
 	List(jarID string) ([]*models.Request, error)
-	Delete(jarID string, reqID string) error
+	DeleteOneRequest(jarID string, reqID string) error
+	DeleteAllRrequests(jarID string) error
 }
 
 type requestStore struct {
@@ -35,8 +36,7 @@ func (s *requestStore) CreateRequest(jarID string, req *models.Request) error {
 		log.Println("jar not found")
 		return errors.New("jar not found")
 	} else {
-		requests = append(requests, req)
-		s.requests[jarID] = requests
+		s.requests[jarID] = append(requests, req)
 	}
 
 	return nil
@@ -46,7 +46,6 @@ func (s *requestStore) CreateJarKey(jarID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	log.Printf("Creating jar key for jarID: %s", jarID)
 	_, jarExists := s.requests[jarID]
 
 	if !jarExists {
@@ -72,7 +71,7 @@ func (s *requestStore) List(jarID string) ([]*models.Request, error) {
 	return requests, nil
 }
 
-func (s *requestStore) Delete(jarID string, reqID string) error {
+func (s *requestStore) DeleteOneRequest(jarID string, reqID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -82,16 +81,18 @@ func (s *requestStore) Delete(jarID string, reqID string) error {
 		return errors.New("jar not found")
 	}
 
-	filteredRequests := slices.Collect(func(yield func(*models.Request) bool) {
-		for _, n := range requests {
-			if n.ID != reqID {
-				if !yield(n) {
-					return
-				}
-			}
-		}
+	filteredRequests := slices.DeleteFunc(requests, func(r *models.Request) bool {
+		return r.ID == reqID
 	})
 
 	s.requests[jarID] = filteredRequests
+	return nil
+}
+
+func (s *requestStore) DeleteAllRrequests(jarID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	delete(s.requests, jarID)
 	return nil
 }

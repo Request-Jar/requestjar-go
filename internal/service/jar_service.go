@@ -38,7 +38,10 @@ func (s *JarService) CreateJar(name string) (string, error) {
 }
 
 func (s *JarService) DeleteJar(jarID string) error {
-	return s.jarStore.Delete(jarID)
+	s.jarStore.Delete(jarID)
+	s.requestStore.DeleteAllRrequests(jarID)
+	s.closeAllConnections(jarID)
+	return nil
 }
 
 func (s *JarService) ListAllJarMetadata() ([]*models.Jar, error) {
@@ -105,7 +108,7 @@ func (s *JarService) NewRequest(jarID string, request *models.Request) error {
 }
 
 func (s *JarService) DeleteRequest(jarID string, reqID string) error {
-	return s.requestStore.Delete(jarID, reqID)
+	return s.requestStore.DeleteOneRequest(jarID, reqID)
 }
 
 func (s *JarService) notifyClients(jarID string, request *models.Request) {
@@ -115,5 +118,17 @@ func (s *JarService) notifyClients(jarID string, request *models.Request) {
 
 	for c := range s.connections[jarID] {
 		c <- request
+	}
+}
+
+func (s *JarService) closeAllConnections(jarID string) {
+	log.Printf("closing connections for %s", jarID)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if conns, exists := s.connections[jarID]; exists {
+		for c := range conns {
+			close(c)
+		}
 	}
 }
