@@ -3,7 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"sync"
 
 	"github.com/bpietroniro/requestjar-go/internal/models"
@@ -67,7 +67,7 @@ func (s *JarService) GetJarWithRequests(jarID string) (*models.Jar, []*models.Re
 }
 
 func (s *JarService) AddConnection(jarID string, eventChan chan *models.Request) error {
-	log.Println("adding connection")
+	slog.Info("adding connection")
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -82,7 +82,7 @@ func (s *JarService) AddConnection(jarID string, eventChan chan *models.Request)
 }
 
 func (s *JarService) RemoveConnection(jarID string, eventChan chan *models.Request) error {
-	log.Println("removing connection")
+	slog.Info("removing connection")
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -112,7 +112,7 @@ func (s *JarService) DeleteRequest(jarID string, reqID string) error {
 }
 
 func (s *JarService) notifyClients(jarID string, request *models.Request) {
-	log.Println("notifying clients")
+	slog.Info("notifying clients")
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -122,7 +122,7 @@ func (s *JarService) notifyClients(jarID string, request *models.Request) {
 }
 
 func (s *JarService) closeAllConnections(jarID string) {
-	log.Printf("closing connections for %s", jarID)
+	slog.Info(fmt.Sprintf("closing connections for %s", jarID))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

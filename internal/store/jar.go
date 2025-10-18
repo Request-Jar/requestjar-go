@@ -2,7 +2,6 @@ package store
 
 import (
 	"errors"
-	"log"
 	"sync"
 	"time"
 
@@ -32,7 +31,6 @@ func (s *jarStore) Create(name string) (string, error) {
 
 	id := util.GenerateID()
 	s.jars[id] = &models.Jar{ID: id, Name: name, CreatedAt: time.Now()}
-	log.Println(s.jars[id])
 
 	return id, nil
 }

@@ -2,7 +2,8 @@ package store
 
 import (
 	"errors"
-	"log"
+	"fmt"
+	"log/slog"
 	"slices"
 	"sync"
 
@@ -33,7 +34,7 @@ func (s *requestStore) CreateRequest(jarID string, req *models.Request) error {
 	requests, jarExists := s.requests[jarID]
 
 	if !jarExists {
-		log.Println("jar not found")
+		slog.Error("jar not found")
 		return errors.New("jar not found")
 	} else {
 		s.requests[jarID] = append(requests, req)
@@ -49,10 +50,10 @@ func (s *requestStore) CreateJarKey(jarID string) error {
 	_, jarExists := s.requests[jarID]
 
 	if !jarExists {
-		log.Printf("Jar %s didn't exist, creating new request slice", jarID)
+		slog.Info(fmt.Sprintf("Jar %s didn't exist, creating new request slice", jarID))
 		s.requests[jarID] = make([]*models.Request, 0, 5)
 	} else {
-		log.Printf("Jar %s already existed in request store", jarID)
+		slog.Info(fmt.Sprintf("Jar %s already existed in request store", jarID))
 	}
 
 	return nil

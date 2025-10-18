@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -143,21 +143,21 @@ func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request
 		case request, ok := <-eventChan:
 			// Channel was closed and likely deleted
 			if !ok {
-				log.Println("Channel closed, ending connection")
+				slog.Info("Channel closed, ending connection")
 				return
 			}
 
 			// Forward incoming request event to the client
 			requestJson, err := json.Marshal(request)
 			if err != nil {
-				log.Printf("Error marshaling request: %v", err)
+				slog.Error(fmt.Sprintf("Error marshaling request: %v", err))
 				continue
 			}
 
 			fmt.Fprintf(w, "data: %s\n\n", requestJson)
 			flusher.Flush()
 		case <-done:
-			log.Println("Client disconnected")
+			slog.Info("Client disconnected")
 			return
 		}
 	}

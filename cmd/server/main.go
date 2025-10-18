@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 
+	"github.com/bpietroniro/requestjar-go/internal/logging"
 	"github.com/bpietroniro/requestjar-go/internal/router"
 	"github.com/bpietroniro/requestjar-go/internal/service"
 	"github.com/bpietroniro/requestjar-go/internal/store"
@@ -12,11 +15,32 @@ import (
 )
 
 func main() {
+	// Logger setup
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: logging.LevelTrace,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.LevelKey {
+				level := a.Value.Any().(slog.Level)
+				levelLabel, exists := logging.LevelNames[level]
+				if !exists {
+					levelLabel = level.String()
+				}
+
+				a.Value = slog.StringValue(levelLabel)
+			}
+
+			return a
+		},
+	}))
+	slog.SetDefault(logger)
+
+	// Dependencies
 	jarStore := store.NewInMemoryJarStore()
 	requestStore := store.NewInMemoryRequestStore()
 	svc := service.NewJarService(jarStore, requestStore)
 	r := router.CreateRouter(svc)
 
+	// Routing
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /jars", r.GetAllJarMetadata)
@@ -26,12 +50,11 @@ func main() {
 	mux.HandleFunc("DELETE /jars/{jarID}/requests/{reqID}", r.DeleteRequest)
 	mux.HandleFunc("GET /jars/{jarID}/events", r.HandleSSEConnection)
 	mux.HandleFunc("/r/{jarID}", r.CaptureRequest)
-
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "hi from Request Jar")
 	})
 
-	// Configure CORS
+	// CORS configuration
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"*"}, // TODO
 		AllowedMethods:   []string{"*"}, // TODO
@@ -41,6 +64,7 @@ func main() {
 
 	handler := c.Handler(mux)
 
-	log.Println("Server starting on :8080")
-	log.Fatal(http.ListenAndServe(":8080", handler))
+	// Server
+	slog.Info("Server starting on :8080")
+	log.Fatal(http.ListenAndServe(":8080", handler)) // TODO change with error logging
 }
