@@ -1,11 +1,10 @@
 package service
 
 import (
-	"errors"
-	"fmt"
 	"log/slog"
 	"sync"
 
+	"github.com/bpietroniro/requestjar-go/internal/errors"
 	"github.com/bpietroniro/requestjar-go/internal/models"
 	"github.com/bpietroniro/requestjar-go/internal/store"
 )
@@ -27,21 +26,31 @@ func NewJarService(jarStore store.JarStore, requestStore store.RequestStore) *Ja
 func (s *JarService) CreateJar(name string) (string, error) {
 	jarID, err := s.jarStore.Create(name)
 	if err != nil {
-		return "", errors.New("failed to create jar")
+		return "", err
 	}
 
 	err = s.requestStore.CreateJarKey(jarID)
 	if err != nil {
-		return "", errors.New("failed to create jar")
+		return "", err
 	}
 
 	return jarID, nil
 }
 
 func (s *JarService) DeleteJar(jarID string) error {
-	// TODO handle errors for each step
-	s.requestStore.DeleteAllRrequests(jarID)
-	s.jarStore.Delete(jarID)
+	slog.Info("deleting all requests for jar...", slog.String("jarID", jarID))
+	err := s.requestStore.DeleteAllRrequests(jarID)
+	if err != nil {
+		return err
+	}
+
+	slog.Info("deleting jar metadata...", slog.String("jarID", jarID))
+	err = s.jarStore.Delete(jarID)
+	if err != nil {
+		return err
+	}
+
+	slog.Info("closing all connections for jar...", slog.String("jarID", jarID))
 	s.closeAllConnections(jarID)
 	return nil
 }
@@ -57,19 +66,18 @@ func (s *JarService) GetJarMetadata(jarID string) (*models.Jar, error) {
 func (s *JarService) GetJarWithRequests(jarID string) (*models.Jar, []*models.Request, error) {
 	jarMetadata, err := s.jarStore.Get(jarID)
 	if err != nil {
-		return nil, nil, errors.Join(err, fmt.Errorf("failed to retrieve jar %s", jarID))
+		return nil, nil, err
 	}
 
 	requests, err := s.requestStore.List(jarID)
 	if err != nil {
-		return nil, nil, errors.Join(err, fmt.Errorf("failed to retrieve requests for jar %s", jarID))
+		return nil, nil, err
 	}
 
 	return jarMetadata, requests, nil
 }
 
 func (s *JarService) AddConnection(jarID string, eventChan chan *models.Request) error {
-	slog.Debug("adding connection", slog.String("jarID", jarID))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -84,13 +92,12 @@ func (s *JarService) AddConnection(jarID string, eventChan chan *models.Request)
 }
 
 func (s *JarService) RemoveConnection(jarID string, eventChan chan *models.Request) error {
-	slog.Debug("removing connection", slog.String("jarID", jarID))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	_, exists := s.connections[jarID]
 	if !exists {
-		return fmt.Errorf("no connections found for jar %s", jarID)
+		return errors.NotFound("no connections found")
 	}
 
 	delete(s.connections[jarID], eventChan)
@@ -114,7 +121,7 @@ func (s *JarService) DeleteRequest(jarID string, reqID string) error {
 }
 
 func (s *JarService) notifyClients(jarID string, request *models.Request) {
-	slog.Debug("notifying clients", slog.String("jarID", jarID), slog.String("reqID", request.ID))
+	slog.Debug("notifying clients", slog.String("jarID", jarID), slog.String("reqID", request.ID), slog.Int("numConns", len(s.connections[jarID])))
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -124,7 +131,7 @@ func (s *JarService) notifyClients(jarID string, request *models.Request) {
 }
 
 func (s *JarService) closeAllConnections(jarID string) {
-	slog.Debug("closing all connections", slog.String("jarID", jarID))
+	slog.Debug("closing all connections", slog.String("jarID", jarID), slog.Int("numConns", len(s.connections[jarID])))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -132,5 +139,8 @@ func (s *JarService) closeAllConnections(jarID string) {
 		for c := range conns {
 			close(c)
 		}
+		return
 	}
+
+	slog.Warn("no connections found, no action taken", slog.String("jarID", jarID))
 }

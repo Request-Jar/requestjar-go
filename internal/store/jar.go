@@ -1,11 +1,11 @@
 package store
 
 import (
-	"errors"
 	"log/slog"
 	"sync"
 	"time"
 
+	"github.com/bpietroniro/requestjar-go/internal/errors"
 	"github.com/bpietroniro/requestjar-go/internal/models"
 	"github.com/bpietroniro/requestjar-go/internal/util"
 )
@@ -43,7 +43,7 @@ func (s *jarStore) Get(id string) (*models.Jar, error) {
 
 	jar, exists := s.jars[id]
 	if !exists {
-		return nil, errors.New("jar not found")
+		return nil, errors.NotFound("jar not found")
 	}
 
 	return jar, nil

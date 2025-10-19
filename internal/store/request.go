@@ -1,12 +1,12 @@
 package store
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
 	"sync"
 
+	"github.com/bpietroniro/requestjar-go/internal/errors"
 	"github.com/bpietroniro/requestjar-go/internal/models"
 )
 
@@ -35,7 +35,7 @@ func (s *requestStore) CreateRequest(jarID string, req *models.Request) error {
 	requests, jarExists := s.requests[jarID]
 
 	if !jarExists {
-		return errors.New("jar not found")
+		return errors.NotFound("jar not found")
 	} else {
 		s.requests[jarID] = append(requests, req)
 	}
@@ -65,7 +65,7 @@ func (s *requestStore) List(jarID string) ([]*models.Request, error) {
 	requests, jarExists := s.requests[jarID]
 
 	if !jarExists {
-		return nil, errors.New("jar not found")
+		return nil, errors.NotFound("jar not found")
 	}
 
 	return requests, nil
@@ -78,7 +78,7 @@ func (s *requestStore) DeleteOneRequest(jarID string, reqID string) error {
 	requests, jarExists := s.requests[jarID]
 
 	if !jarExists {
-		return errors.New("jar not found")
+		return errors.NotFound("jar not found")
 	}
 
 	filteredRequests := slices.DeleteFunc(requests, func(r *models.Request) bool {
@@ -92,6 +92,12 @@ func (s *requestStore) DeleteOneRequest(jarID string, reqID string) error {
 func (s *requestStore) DeleteAllRrequests(jarID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	_, jarExists := s.requests[jarID]
+
+	if !jarExists {
+		return errors.NotFound("no requests record found for jar")
+	}
 
 	delete(s.requests, jarID)
 	return nil

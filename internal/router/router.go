@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/bpietroniro/requestjar-go/internal/errors"
 	"github.com/bpietroniro/requestjar-go/internal/models"
 	"github.com/bpietroniro/requestjar-go/internal/service"
 	"github.com/bpietroniro/requestjar-go/internal/util"
@@ -35,7 +36,7 @@ func (router *Router) CreateJar(w http.ResponseWriter, r *http.Request) {
 	newJarID, err := router.svc.CreateJar(reqBody.Name)
 	if err != nil {
 		slog.Error("failed to create jar", slog.Any("error", err))
-		http.Error(w, "failed to create jar", http.StatusInternalServerError)
+		errors.WriteHTTPError(w, err, "failed to create jar")
 		return
 	}
 
@@ -53,7 +54,7 @@ func (router *Router) DeleteJar(w http.ResponseWriter, r *http.Request) {
 	err := router.svc.DeleteJar(jarID)
 	if err != nil {
 		slog.Error("failed to delete jar", slog.String("jarID", jarID), slog.Any("error", err))
-		http.Error(w, "failed to delete jar", http.StatusInternalServerError)
+		errors.WriteHTTPError(w, err, "failed to delete jar")
 		return
 	}
 
@@ -66,7 +67,7 @@ func (router *Router) GetAllJarMetadata(w http.ResponseWriter, r *http.Request) 
 
 	if err != nil {
 		slog.Error("failed to fetch jar metadata", slog.Any("error", err))
-		http.Error(w, "failed to fetch jar metadata", http.StatusInternalServerError)
+		errors.WriteHTTPError(w, err, "failed to fetch jar metadata")
 		return
 	}
 
@@ -81,8 +82,7 @@ func (router *Router) DeleteRequest(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		slog.Error("failed to delete jar", slog.String("jarID", jarID), slog.String("reqID", reqID), slog.Any("error", err))
-		// TODO appropriate status codes
-		http.Error(w, "failed to delete request", http.StatusInternalServerError)
+		errors.WriteHTTPError(w, err, "failed to delete request")
 		return
 	}
 
@@ -94,10 +94,10 @@ func (router *Router) GetJarWithRequests(w http.ResponseWriter, r *http.Request)
 
 	jar, requests, err := router.svc.GetJarWithRequests(jarID)
 
-	// TODO appropriate status codes
 	if err != nil {
 		slog.Error("failed to retrieve jar", slog.String("jarID", jarID), slog.Any("error", err))
-		http.Error(w, "failed to retrieve jar", http.StatusBadRequest)
+		errors.WriteHTTPError(w, err, "failed to retrieve jar")
+		return
 	}
 
 	resp := GetJarWithRequestsResponse{
@@ -117,7 +117,7 @@ func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request
 	_, err := router.svc.GetJarMetadata(jarID)
 	if err != nil {
 		slog.Error("jar not found", slog.String("jarID", jarID), slog.Any("error", err))
-		http.Error(w, "Jar not found", http.StatusNotFound)
+		errors.WriteHTTPError(w, err, "jar not found")
 		return
 	}
 
@@ -185,7 +185,7 @@ func (router *Router) CaptureRequest(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		slog.ErrorContext(r.Context(), "failed to read request body")
-		http.Error(w, "Failed to read body", http.StatusInternalServerError)
+		http.Error(w, "Failed to read body", http.StatusInternalServerError) // TODO check correct status code
 		return
 	}
 
@@ -214,9 +214,9 @@ func (router *Router) CaptureRequest(w http.ResponseWriter, r *http.Request) {
 	err = router.svc.NewRequest(jarID, req)
 
 	if err != nil {
-		// TODO appropriate status codes
 		slog.ErrorContext(r.Context(), "failed to create new request", slog.String("jarID", jarID))
-		http.Error(w, "failed to create new request", http.StatusInternalServerError)
+		errors.WriteHTTPError(w, err, "failed to create new request")
+		return
 	}
 
 	slog.Info("request successfully captured", slog.String("jarID", jarID))
