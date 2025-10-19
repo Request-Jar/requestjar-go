@@ -51,7 +51,7 @@ func main() {
 	mux.HandleFunc("GET /jars/{jarID}/events", r.HandleSSEConnection)
 	mux.HandleFunc("/r/{jarID}", r.CaptureRequest)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "hi from Request Jar")
+		fmt.Fprint(w, "hi from Request Jar") // TODO
 	})
 
 	// CORS configuration
@@ -66,5 +66,5 @@ func main() {
 
 	// Server
 	slog.Info("Server starting on :8080")
-	log.Fatal(http.ListenAndServe(":8080", handler)) // TODO change with error logging
+	log.Fatal(http.ListenAndServe(":8080", handler))
 }

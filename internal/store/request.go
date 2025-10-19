@@ -24,6 +24,7 @@ type requestStore struct {
 }
 
 func NewInMemoryRequestStore() RequestStore {
+	slog.Info("creating request storage dependency")
 	return &requestStore{requests: make(map[string][]*models.Request)}
 }
 
@@ -34,7 +35,6 @@ func (s *requestStore) CreateRequest(jarID string, req *models.Request) error {
 	requests, jarExists := s.requests[jarID]
 
 	if !jarExists {
-		slog.Error("jar not found")
 		return errors.New("jar not found")
 	} else {
 		s.requests[jarID] = append(requests, req)
@@ -50,10 +50,9 @@ func (s *requestStore) CreateJarKey(jarID string) error {
 	_, jarExists := s.requests[jarID]
 
 	if !jarExists {
-		slog.Info(fmt.Sprintf("Jar %s didn't exist, creating new request slice", jarID))
 		s.requests[jarID] = make([]*models.Request, 0, 5)
 	} else {
-		slog.Info(fmt.Sprintf("Jar %s already existed in request store", jarID))
+		slog.Warn(fmt.Sprintf("Jar %s already existed in request store", jarID))
 	}
 
 	return nil

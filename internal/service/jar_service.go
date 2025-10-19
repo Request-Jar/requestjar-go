@@ -18,6 +18,7 @@ type JarService struct {
 }
 
 func NewJarService(jarStore store.JarStore, requestStore store.RequestStore) *JarService {
+	slog.Info("creating new jar service dependency")
 	return &JarService{
 		jarStore: jarStore, requestStore: requestStore, connections: make(map[string]map[chan *models.Request]struct{}),
 	}
@@ -38,8 +39,9 @@ func (s *JarService) CreateJar(name string) (string, error) {
 }
 
 func (s *JarService) DeleteJar(jarID string) error {
-	s.jarStore.Delete(jarID)
+	// TODO handle errors for each step
 	s.requestStore.DeleteAllRrequests(jarID)
+	s.jarStore.Delete(jarID)
 	s.closeAllConnections(jarID)
 	return nil
 }
@@ -67,7 +69,7 @@ func (s *JarService) GetJarWithRequests(jarID string) (*models.Jar, []*models.Re
 }
 
 func (s *JarService) AddConnection(jarID string, eventChan chan *models.Request) error {
-	slog.Info("adding connection")
+	slog.Debug("adding connection", slog.String("jarID", jarID))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -82,7 +84,7 @@ func (s *JarService) AddConnection(jarID string, eventChan chan *models.Request)
 }
 
 func (s *JarService) RemoveConnection(jarID string, eventChan chan *models.Request) error {
-	slog.Info("removing connection")
+	slog.Debug("removing connection", slog.String("jarID", jarID))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -112,7 +114,7 @@ func (s *JarService) DeleteRequest(jarID string, reqID string) error {
 }
 
 func (s *JarService) notifyClients(jarID string, request *models.Request) {
-	slog.Info("notifying clients")
+	slog.Debug("notifying clients", slog.String("jarID", jarID), slog.String("reqID", request.ID))
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -122,7 +124,7 @@ func (s *JarService) notifyClients(jarID string, request *models.Request) {
 }
 
 func (s *JarService) closeAllConnections(jarID string) {
-	slog.Info(fmt.Sprintf("closing connections for %s", jarID))
+	slog.Debug("closing all connections", slog.String("jarID", jarID))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

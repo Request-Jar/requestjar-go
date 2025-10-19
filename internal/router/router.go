@@ -18,6 +18,7 @@ type Router struct {
 }
 
 func CreateRouter(svc *service.JarService) *Router {
+	slog.Info("creating new router dependency")
 	return &Router{svc: svc}
 }
 
@@ -26,12 +27,14 @@ func (router *Router) CreateJar(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&reqBody)
 	if err != nil {
+		slog.ErrorContext(r.Context(), "failed to parse request body")
 		http.Error(w, "error parsing request", http.StatusBadRequest)
 		return
 	}
 
 	newJarID, err := router.svc.CreateJar(reqBody.Name)
 	if err != nil {
+		slog.Error("failed to create jar", slog.Any("error", err))
 		http.Error(w, "failed to create jar", http.StatusInternalServerError)
 		return
 	}
@@ -40,6 +43,7 @@ func (router *Router) CreateJar(w http.ResponseWriter, r *http.Request) {
 		"id": newJarID,
 	}
 
+	slog.Info("new jar created", slog.String("jarID", newJarID))
 	util.WriteJSON(w, http.StatusCreated, resp)
 }
 
@@ -48,10 +52,12 @@ func (router *Router) DeleteJar(w http.ResponseWriter, r *http.Request) {
 
 	err := router.svc.DeleteJar(jarID)
 	if err != nil {
+		slog.Error("failed to delete jar", slog.String("jarID", jarID), slog.Any("error", err))
 		http.Error(w, "failed to delete jar", http.StatusInternalServerError)
 		return
 	}
 
+	slog.Info("jar successfully deleted", slog.String("jarID", jarID))
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -59,6 +65,7 @@ func (router *Router) GetAllJarMetadata(w http.ResponseWriter, r *http.Request) 
 	jars, err := router.svc.ListAllJarMetadata()
 
 	if err != nil {
+		slog.Error("failed to fetch jar metadata", slog.Any("error", err))
 		http.Error(w, "failed to fetch jar metadata", http.StatusInternalServerError)
 		return
 	}
@@ -73,6 +80,7 @@ func (router *Router) DeleteRequest(w http.ResponseWriter, r *http.Request) {
 	err := router.svc.DeleteRequest(jarID, reqID)
 
 	if err != nil {
+		slog.Error("failed to delete jar", slog.String("jarID", jarID), slog.String("reqID", reqID), slog.Any("error", err))
 		// TODO appropriate status codes
 		http.Error(w, "failed to delete request", http.StatusInternalServerError)
 		return
@@ -88,6 +96,7 @@ func (router *Router) GetJarWithRequests(w http.ResponseWriter, r *http.Request)
 
 	// TODO appropriate status codes
 	if err != nil {
+		slog.Error("failed to retrieve jar", slog.String("jarID", jarID), slog.Any("error", err))
 		http.Error(w, "failed to retrieve jar", http.StatusBadRequest)
 	}
 
@@ -102,9 +111,12 @@ func (router *Router) GetJarWithRequests(w http.ResponseWriter, r *http.Request)
 func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request) {
 	jarID := r.PathValue("jarID")
 
+	slog.InfoContext(r.Context(), "adding new SSE connection", slog.String("jarID", jarID))
+
 	// Check that jar exists
 	_, err := router.svc.GetJarMetadata(jarID)
 	if err != nil {
+		slog.Error("jar not found", slog.String("jarID", jarID), slog.Any("error", err))
 		http.Error(w, "Jar not found", http.StatusNotFound)
 		return
 	}
@@ -116,6 +128,7 @@ func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
+		slog.WarnContext(r.Context(), "streaming unsupported, aborting new connection setup")
 		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
 		return
 	}
@@ -128,6 +141,7 @@ func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request
 
 	// Clean up
 	defer func() {
+		slog.InfoContext(r.Context(), "removing SSE connection", slog.String("jarID", jarID))
 		router.svc.RemoveConnection(jarID, eventChan)
 		close(eventChan)
 	}()
@@ -143,21 +157,22 @@ func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request
 		case request, ok := <-eventChan:
 			// Channel was closed and likely deleted
 			if !ok {
-				slog.Info("Channel closed, ending connection")
+				slog.Warn("Channel closed, ending connection")
 				return
 			}
 
 			// Forward incoming request event to the client
 			requestJson, err := json.Marshal(request)
 			if err != nil {
-				slog.Error(fmt.Sprintf("Error marshaling request: %v", err))
+				slog.Error("error marshaling request", slog.Any("error", err))
 				continue
 			}
 
+			slog.Debug("sending request through channel", slog.String("jarID", jarID), slog.String("reqID", request.ID))
 			fmt.Fprintf(w, "data: %s\n\n", requestJson)
 			flusher.Flush()
 		case <-done:
-			slog.Info("Client disconnected")
+			slog.InfoContext(r.Context(), "Client disconnected", slog.String("jarID", jarID))
 			return
 		}
 	}
@@ -167,10 +182,13 @@ func (router *Router) CaptureRequest(w http.ResponseWriter, r *http.Request) {
 	jarID := r.PathValue("jarID")
 
 	body, err := io.ReadAll(r.Body)
+
 	if err != nil {
+		slog.ErrorContext(r.Context(), "failed to read request body")
 		http.Error(w, "Failed to read body", http.StatusInternalServerError)
 		return
 	}
+
 	defer r.Body.Close()
 
 	headers := make(map[string]string)
@@ -197,6 +215,9 @@ func (router *Router) CaptureRequest(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		// TODO appropriate status codes
+		slog.ErrorContext(r.Context(), "failed to create new request", slog.String("jarID", jarID))
 		http.Error(w, "failed to create new request", http.StatusInternalServerError)
 	}
+
+	slog.Info("request successfully captured", slog.String("jarID", jarID))
 }

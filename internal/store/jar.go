@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -22,6 +23,7 @@ type jarStore struct {
 }
 
 func NewInMemoryJarStore() JarStore {
+	slog.Info("creating jar storage dependency")
 	return &jarStore{jars: make(map[string]*models.Jar)}
 }
 
