@@ -3,18 +3,18 @@ package models
 import "time"
 
 type Jar struct {
-	ID        string
-	Name      string
-	CreatedAt time.Time
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type Request struct {
-	ID        string
-	CreatedAt time.Time
-	Method    string
-	Path      string
-	Headers   map[string]string
-	ClientIP  string
-	Body      []byte
-	Query     map[string]string
+	ID        string            `json:"id"`
+	CreatedAt time.Time         `json:"createdAt"`
+	Method    string            `json:"method"`
+	Path      string            `json:"path"`
+	Headers   map[string]string `json:"headers"`
+	ClientIP  string            `json:"clientIP"`
+	Body      []byte            `json:"body"`
+	Query     map[string]string `json:"query"`
 }
