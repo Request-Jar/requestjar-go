@@ -137,16 +137,27 @@ func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request
 	eventChan := make(chan *models.Request)
 
 	// Register the connection
-	router.svc.AddConnection(jarID, eventChan)
+	err = router.svc.AddConnection(jarID, eventChan)
+	if err != nil {
+		slog.Error("failed to add connection", slog.String("jarID", jarID), slog.Any("error", err))
+	}
 
 	// Clean up
 	defer func() {
 		slog.InfoContext(r.Context(), "removing SSE connection", slog.String("jarID", jarID))
-		router.svc.RemoveConnection(jarID, eventChan)
+
+		err = router.svc.RemoveConnection(jarID, eventChan)
+		if err != nil {
+			slog.Error("failed to remove connection", slog.String("jarID", jarID), slog.Any("error", err))
+		}
+
 		close(eventChan)
 	}()
 
-	fmt.Fprintf(w, "data: connected\n\n")
+	_, err = fmt.Fprintf(w, "data: connected\n\n")
+	if err != nil {
+		slog.Error("error writing connection response", slog.String("jarID", jarID), slog.Any("error", err))
+	}
 	flusher.Flush()
 
 	// Client has disconnected
@@ -169,7 +180,12 @@ func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request
 			}
 
 			slog.Debug("sending request through channel", slog.String("jarID", jarID), slog.String("reqID", request.ID))
-			fmt.Fprintf(w, "data: %s\n\n", requestJson)
+			_, err = fmt.Fprintf(w, "data: %s\n\n", requestJson)
+			if err != nil {
+				slog.Error("error forwarding request", slog.String("jarID", jarID), slog.Any("error", err))
+				continue
+			}
+
 			flusher.Flush()
 		case <-done:
 			slog.InfoContext(r.Context(), "Client disconnected", slog.String("jarID", jarID))
@@ -190,7 +206,12 @@ func (router *Router) CaptureRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer r.Body.Close()
+	defer func() {
+		err := r.Body.Close()
+		if err != nil {
+			slog.ErrorContext(r.Context(), "error closing request")
+		}
+	}()
 
 	headers := make(map[string]string)
 	for key, values := range r.Header {

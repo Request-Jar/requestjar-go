@@ -52,7 +52,10 @@ func main() {
 	mux.HandleFunc("/r/{jarID}/", r.CaptureRequest)
 	mux.HandleFunc("/r/{jarID}/{path}", r.CaptureRequest)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "hi from Request Jar") // TODO
+		_, err := fmt.Fprint(w, "hi from Request Jar") // TODO
+		if err != nil {
+			slog.Error("error writing response", slog.Any("error", err))
+		}
 	})
 
 	// CORS configuration
