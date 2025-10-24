@@ -180,6 +180,7 @@ func (router *Router) HandleSSEConnection(w http.ResponseWriter, r *http.Request
 
 func (router *Router) CaptureRequest(w http.ResponseWriter, r *http.Request) {
 	jarID := r.PathValue("jarID")
+	path := r.PathValue(("path"))
 
 	body, err := io.ReadAll(r.Body)
 
@@ -204,7 +205,7 @@ func (router *Router) CaptureRequest(w http.ResponseWriter, r *http.Request) {
 	req := &models.Request{
 		CreatedAt: time.Now(),
 		Method:    r.Method,
-		Path:      r.URL.Path,
+		Path:      path,
 		Headers:   headers,
 		Query:     query,
 		Body:      body,

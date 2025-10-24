@@ -49,7 +49,8 @@ func main() {
 	mux.HandleFunc("GET /jars/{jarID}", r.GetJarWithRequests)
 	mux.HandleFunc("DELETE /jars/{jarID}/requests/{reqID}", r.DeleteRequest)
 	mux.HandleFunc("GET /jars/{jarID}/events", r.HandleSSEConnection)
-	mux.HandleFunc("/r/{jarID}", r.CaptureRequest)
+	mux.HandleFunc("/r/{jarID}/", r.CaptureRequest)
+	mux.HandleFunc("/r/{jarID}/{path}", r.CaptureRequest)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "hi from Request Jar") // TODO
 	})
